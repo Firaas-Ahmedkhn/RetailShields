@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+
+/* @font-face {
+  font-family: "poppins";
+  src: url("./Poppins-Black.ttf");
+} */
+
+
+html,body{
+  width:100%;
+  height:100%;
+  font-family: "Outfit",sans-serif;
+
+}
+
+@keyframes slide {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-slide {
+  animation: slide 20s linear infinite;
+}
