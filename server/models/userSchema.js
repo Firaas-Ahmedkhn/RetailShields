@@ -38,6 +38,11 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  registeredIp: {
+  type: String,
+  default: '', // optional initially
+},
+
 
 }, { timestamps: true });
 

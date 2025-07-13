@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import axios from "axios";
 import nodemailer from "nodemailer"
 
-let otpStore = {}; 
+let otpStore = {};
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallbacksecret";
 const BIOMETRIC_API_URL = process.env.BIOMETRIC_API_URL
@@ -15,42 +15,39 @@ export const register = async (req, res) => {
   try {
     const { name, email, password, role, biometricProfile, otpTransformation } = req.body;
 
-    // 🔍 Validate input
-    if (
-      !name ||
-      !email ||
-      !password ||
-      !role ||
-      !biometricProfile ||
-      biometricProfile.length < 10 ||
-      !otpTransformation
-    ) {
+    if (!name || !email || !password || !role || !biometricProfile || !otpTransformation) {
       return res.status(400).json({ message: "Missing or invalid input" });
     }
 
-    // ❌ Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (existingUser)
       return res.status(400).json({ message: "User already exists" });
-    }
 
-    // 🔐 Hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    // ✅ Create new user
+    // 🔍 Capture IP address from headers (or fallback)
+    let ip = req.body.registeredIp;
+    if (!ip || ip.trim() === '') {
+      ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    }
+
     const newUser = await User.create({
       name,
       email,
       password: hashed,
       role,
       biometricProfile,
-      otpTransformation, // 🆕 Store OTP strategy
+      otpTransformation,
+      registeredIP: ip,
     });
 
-    return res.status(201).json({ message: "User registered successfully" });
+    console.log(ip);
+
+
+    res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
     console.error("Register error:", err);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -58,6 +55,43 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password, typingPattern } = req.body;
+
+    const currentIP = req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+    if (user.registeredIp !== currentIP) {
+      // Send email alert
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "retailshield864@gmail.com",
+          pass: process.env.APP_PASSWORD,
+        },
+      });
+
+      const mailOptions = {
+        from: "",
+        to: email,
+        subject: "🚨 Suspicious Login Attempt Detected",
+        text: `Hello ${user.name},
+
+A login attempt was made from an unrecognized IP address.
+
+🔒 Attempted IP: ${currentIP}
+✅ Registered IP: ${user.registeredIp}
+
+The login attempt was blocked for your safety.
+
+If this was you, please contact support to update your trusted IP address.
+
+– RetailShield Security Team
+`,
+      };
+
+      transporter.sendMail(mailOptions, (err) => {
+        if (err) console.error("Email alert failed:", err.message);
+      });
+
+      return res.status(403).json({ message: "Access denied: Unrecognized IP address" });
+    }
 
     // 🔎 Validate input
     if (!email || !password || !typingPattern || typingPattern.length < 10) {
@@ -82,7 +116,7 @@ export const login = async (req, res) => {
         attemptProfile: typingPattern,
       });
       console.log(response.data);
-      
+
 
       score = response?.data?.score ?? -1;
       prediction = response?.data?.prediction ?? "rejected";
@@ -99,7 +133,7 @@ export const login = async (req, res) => {
       });
     }
 
-    if (prediction === "suspicious" ) {
+    if (prediction === "suspicious") {
       return res.status(403).json({
         message: "⚠️ Suspicious biometric behavior. Please try again.",
         score,
@@ -107,13 +141,13 @@ export const login = async (req, res) => {
     }
 
     // ✅ If biometric is valid, update stored biometric pattern
-     if (prediction === "valid") {
+    if (prediction === "valid") {
       await User.findByIdAndUpdate(user._id, {
         biometricProfile: typingPattern,
       });
     }
     // console.log(score);
-    
+
 
     // 🎟️ Generate token
     const token = jwt.sign(
