@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 backend/creditcard.csv
 backend/DSL-StrongPasswordData.csv
+.env
