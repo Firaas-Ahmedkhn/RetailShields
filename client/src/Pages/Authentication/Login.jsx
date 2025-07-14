@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { initTypingTracker, cleanupTypingTracker, extractFeatures } from "../../utils/typingTracker.js";
 import { useNavigate } from 'react-router-dom';
+
 import toast, { Toaster } from 'react-hot-toast';
 import axios from 'axios';
 import SlideshowWithText from './components/Slideshow';
@@ -22,36 +23,49 @@ const Login = () => {
     return () => cleanupTypingTracker(passwordRef);
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!agreed) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!agreed) return;
 
-    const typingPattern = extractFeatures(password);
-    if (typingPattern.length === 0) {
-      toast.error("⚠️ Typing pattern not captured properly. Try again.");
-      return;
-    }
+  const typingPattern = extractFeatures(password);
+  if (typingPattern.length === 0) {
+    toast.error("⚠️ Typing pattern not captured properly. Try again.");
+    return;
+  }
 
-    try {
-      setLoading(true);
+ try {
+  setLoading(true);
 
-      const { data } = await axios.post('http://localhost:3000/api/auth/login', {
+  const { data } = await axios.post('http://localhost:3000/api/auth/login', {
+    email,
+    password,
+    typingPattern,
+    agreementChecked: agreed,
+  });
+
+  toast.success("✅ Login successful!");
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('user', JSON.stringify(data.user));
+  setTimeout(() => navigate('/employee-dashboard'), 1000);
+} catch (err) {
+  const data = err?.response?.data;
+
+  // ✅ Check for redirect flag in error response
+  if (data?.redirectToSecurityQuestion) {
+    toast.error("⚠️ Suspicious biometric behavior. Please verify.");
+    return navigate("/security-question", {
+      state: {
         email,
-        password,
-        typingPattern,
-      });
+        question: data.question,
+      },
+    });
+  }
 
-      toast.success("✅ Login successful!");
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
-      setTimeout(() => navigate('/employee-dashboard'), 1000);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "❌ Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  toast.error(data?.message || "❌ Login failed");
+} finally {
+  setLoading(false);
+}
+ }
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">

@@ -18,10 +18,16 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [registeredIp, setregisteredIp] = useState('');
   const [otpTransformation, setOtpTransformation] = useState('');
   const passwordRef = useRef();
 
   useEffect(() => {
+    fetch("https://api.ipify.org/?format=json")
+      .then((res) => res.json())
+      .then((data) => setregisteredIp(data.ip))
+      .catch((err) => console.error("Failed to fetch IP:", err));
+
     initTypingTracker(passwordRef);
     return () => cleanupTypingTracker(passwordRef);
   }, []);
@@ -37,23 +43,29 @@ const Register = () => {
       return toast.error("⚠️ Typing pattern not captured properly. Try again.");
 
     try {
-      await axios.post('http://localhost:3000/api/auth/register', {
+      console.log("📍 IP being sent:", registeredIp);
+
+      const response = await axios.post('http://localhost:3000/api/auth/register', {
         name,
         email,
         password,
         role: 'employee',
         biometricProfile,
         otpTransformation,
+        registeredIp, // ✅ You’ve defined and fetched this properly
       });
+
+      console.log("📡 Backend response:", response.data);
 
       toast.success("✅ Registered successfully!");
       resetTypingTracker();
       setTimeout(() => navigate('/'), 1200);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Registration Error:", err);
       toast.error(err?.response?.data?.message || "Registration failed");
     }
   };
+
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row ">
@@ -126,14 +138,14 @@ const Register = () => {
 
             {/* OTP Transformation */}
             <div className="mb-4">
-              <label className="block text-sm mb-1">Select OTP Transformation Strategy</label>
+              <label className="block text-sm mb-1 ">Select OTP Transformation Strategy</label>
               <select
                 value={otpTransformation}
                 onChange={(e) => setOtpTransformation(e.target.value)}
                 required
                 className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
-                <option value="">-- Select a strategy --</option>
+                <option  className ="text-gray-400 bg-gray-400" value="">-- Select a strategy --</option>
                 <option value="reverse">Reverse OTP</option>
                 <option value="prefix_42">Prefix 42</option>
                 <option value="shift_+1">Shift digits +1</option>
@@ -147,10 +159,15 @@ const Register = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold hover:opacity-90 transition"
+              disabled={!registeredIp || !name || !email || !password || !confirm || !otpTransformation}
+              className={`w-full py-2 rounded-lg font-semibold text-white transition
+    ${(!registeredIp || !name || !email || !password || !confirm || !otpTransformation)
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90'}`}
             >
-              Create Account
+              {registeredIp ? 'Create Account' : 'Fetching IP...'}
             </button>
+
           </form>
 
 

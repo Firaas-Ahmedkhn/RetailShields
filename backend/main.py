@@ -27,9 +27,9 @@ def predict_biometric(data: BiometricRequest):
         # 🔍 Thresholds (adjust as needed)
         if score > 0.98:
             prediction = "valid"
-        elif score > 0.94:
-            prediction = "suspicious"
         elif score > 0.92:
+            prediction = "suspicious"
+        elif score > 0.90:
             prediction = "rejected"
         else:
             prediction = "threat"

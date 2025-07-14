@@ -10,6 +10,8 @@ import {
   LogOut
 } from "lucide-react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useState } from "react";
 
 const Sidebar = ({ activePage, setActivePage }) => {
@@ -25,12 +27,19 @@ const Sidebar = ({ activePage, setActivePage }) => {
   ];
 
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate()
 
   const handleLogout = () => {
-    // Add logout logic here
-    console.log("Logging out...");
-  };
+  // Clear user session
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
 
+  // Optional: toast confirmation
+  toast.success("Logged out successfully!");
+
+  // Redirect to login
+  navigate('/');
+}
   return (
     <div
       className={`bg-[#252525] text-white shadow-xl transition-all duration-300 ${

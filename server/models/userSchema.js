@@ -15,6 +15,24 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  loginAttempts: {
+    type: Number,
+    default: 0,
+  },
+
+  securityQuestion: {
+    type: String,
+    default: "What is your favorite color?"
+  },
+  securityAnswer: {
+    type: String,
+    required: false,
+  },
+
+  lockUntil: {
+    type: Date,
+    default: null,
+  },
   role: {
     type: String,
     enum: ["employee", "admin"],
@@ -23,6 +41,20 @@ const UserSchema = new mongoose.Schema({
   biometricProfile: {
     type: [Number], // typing pattern vector
     default: [],
+  },
+
+  complianceScore: {
+    type: Number,
+    default: 0,
+  },
+  passwordStrength: {
+    type: String,
+    enum: ["weak", "medium", "strong"],
+    default: "weak"
+  },
+  agreementChecked: {
+    type: Boolean,
+    default: false,
   },
   riskScore: {
     type: Number,
@@ -38,26 +70,11 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  agreementChecked: {
-    type: Boolean,
-    default: false,
-  },
-
-  passwordStrength: {
+  registeredIp: {
     type: String,
-    enum: ["weak", "medium", "strong"],
-    default: "weak",
+    default: '', // optional initially
   },
 
-  isLastBiometricValid: {
-    type: Boolean,
-    default: false,
-  },
-
-  phishingTrainingCompleted: {
-    type: Boolean,
-    default: false,
-  },
 
 }, { timestamps: true });
 

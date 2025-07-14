@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import nodemailer from "nodemailer"
+import zxcvbn from "zxcvbn";
 
 let otpStore = {};
 
@@ -23,57 +24,51 @@ export const register = async (req, res) => {
       agreementChecked,
     } = req.body;
 
-    // 🧾 Input validation
-    if (
-      !name ||
-      !email ||
-      !password ||
-      !biometricProfile ||
-      !otpTransformation ||
-      agreementChecked !== true
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Missing required fields or agreement not checked" });
+    if (!name || !email || !password || !role || !biometricProfile || !otpTransformation) {
+      return res.status(400).json({ message: "Missing or invalid input" });
     }
 
-    // 🔍 Check if user already exists
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: "User already exists" });
-    }
+    if (existingUser)
+      return res.status(400).json({ message: "User already exists" });
 
-    // 🔐 Password strength analysis
+    const hashedPassword = await bcrypt.hash(password, 10);
+    // Check password strength using zxcvbn
     const strengthScore = zxcvbn(password).score;
     let passwordStrength = "weak";
     if (strengthScore >= 4) passwordStrength = "strong";
     else if (strengthScore >= 2) passwordStrength = "medium";
 
-    // 🔑 Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Initial compliance score based on password strength
+    let complianceScore = 0;
+    if (passwordStrength === "strong") complianceScore += 30;
+    else if (passwordStrength === "medium") complianceScore += 15;
+    // 🔍 Capture IP address from headers (or fallback)
+    let ip = req.body.registeredIp;
+    if (!ip || ip.trim() === '') {
+      ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    }
 
-    // ✅ Create and save user
-    const newUser = new User({
+    const newUser = await User.create({
       name,
       email,
       password: hashedPassword,
       role: role || "employee",
       biometricProfile,
       otpTransformation,
-      agreementChecked: true,
+      registeredIp: ip,
       passwordStrength,
-      phishingTrainingCompleted: false,
-      isLastBiometricValid: false,
+      complianceScore,
+      agreementChecked: agreementChecked === true
     });
 
-    await newUser.save();
+    console.log(ip);
 
-    res.status(201).json({ message: "✅ User registered successfully" });
+
+    res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
-    console.error("🔥 Registration Error:", err.message);
-    res
-      .status(500)
-      .json({ message: "❌ Server error during registration" });
+    console.error("Register error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -82,7 +77,6 @@ export const login = async (req, res) => {
   try {
     const { email, password, typingPattern, agreementChecked } = req.body;
 
-    // 🔎 Validate input
     if (!email || !password || !typingPattern || typingPattern.length < 10) {
       return res.status(400).json({ message: "Missing or invalid input" });
     }
@@ -90,8 +84,57 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      return res.status(403).json({
+        message: `Account locked due to multiple failed attempts. Try again after ${user.lockUntil.toLocaleString()}`,
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+
+    if (!match) {
+      user.loginAttempts += 1;
+
+      if (user.loginAttempts >= 3) {
+        user.lockUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hrs
+        user.loginAttempts = 0; // reset attempts after lock
+
+        // Send email notification
+        try {
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: "retailshield864@gmail.com",
+              pass: process.env.APP_PASSWORD,
+            },
+          });
+
+          await transporter.sendMail({
+            from: "Retail Shield <retailshield864@gmail.com>",
+            to: email,
+            subject: "🚨 Account Locked After Multiple Failed Attempts",
+            text: `Hi ${user.name},\n\nYour account has been locked due to multiple incorrect password attempts.\n\n⏳ You can try again after: ${user.lockUntil.toLocaleString()}\n\nIf this wasn’t you, please contact support immediately.\n\n– Retail Shield Security`,
+          });
+
+        } catch (emailErr) {
+          console.error("❌ Failed to send lock alert email:", emailErr.message);
+        }
+
+        await user.save();
+        return res.status(403).json({ message: "Account locked for 24 hours due to multiple failed attempts" });
+      }
+
+      await user.save();
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // ✅ Password matched, reset attempts if needed
+    if (user.loginAttempts > 0 || user.lockUntil) {
+      user.loginAttempts = 0;
+      user.lockUntil = null;
+      await user.save();
+    }
 
     // 🔐 Password strength check
     const strengthScore = zxcvbn(password).score;
@@ -99,57 +142,92 @@ export const login = async (req, res) => {
     if (strengthScore >= 4) passwordStrength = "strong";
     else if (strengthScore >= 2) passwordStrength = "medium";
 
-    // 🧠 Biometric comparison via FastAPI
+    // 🧠 Biometric
     let score = -1;
     let prediction = "unknown";
 
-    try {
-      const response = await axios.post("http://localhost:8000/predict/biometric", {
-        originalProfile: user.biometricProfile,
-        attemptProfile: typingPattern,
-      });
+   try {
+  const response = await axios.post("http://localhost:8000/predict/biometric", {
+    originalProfile: user.biometricProfile,
+    attemptProfile: typingPattern,
+  });
 
-      score = response?.data?.score ?? -1;
-      prediction = response?.data?.prediction ?? "rejected";
-    } catch (err) {
-      console.error("❌ Biometric API error:", err.message);
-      return res.status(500).json({ message: "Biometric comparison failed. Try again." });
-    }
+  score = response?.data?.score ?? -1;
+  prediction = response?.data?.prediction ?? "rejected";
 
-    // ❌ Rejected login attempts
+  console.log(`🧠 Biometric score for ${user.email}:`, score, '| Prediction:', prediction);
+} catch (err) {
+  return res.status(500).json({ message: "Biometric comparison failed. Try again." });
+}
+
     if (prediction === "rejected") {
-      return res.status(403).json({
-        message: "❌ Biometric rejected. Access denied.",
-        score,
-      });
+      console.log("Rejected:",score)
+      return res.status(403).json({ message: "❌ Biometric rejected. Access denied.", score });
+      
     }
-
     if (prediction === "suspicious") {
+      // Send email to alert the user
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: "retailshield864@gmail.com",
+            pass: process.env.APP_PASSWORD,
+          },
+        });
+
+        await transporter.sendMail({
+          from: "Retail Shield <retailshield864@gmail.com>",
+          to: user.email,
+          subject: "⚠️ Suspicious Login Behavior Detected",
+          text: `Hi ${user.name},
+
+We've detected suspicious biometric behavior during your recent login attempt.
+
+🕵️‍♀️ It may indicate someone else trying to access your account.
+
+You’ve been redirected to answer a security question to confirm it’s really you.
+
+If this wasn’t you, please change your password immediately and contact support.
+
+– Retail Shield Security Team`
+        });
+
+      } catch (emailErr) {
+        console.error("❌ Failed to send suspicious login alert:", emailErr.message);
+      }
+
+      // Return redirect flag and security question
       return res.status(403).json({
-        message: "⚠️ Suspicious biometric behavior. Please try again.",
-        score,
+        message: "Suspicious biometric behavior. Please answer your security question.",
+        redirectToSecurityQuestion: true,
+        question: user.securityQuestion
       });
     }
 
-    // ✅ Valid biometric match: Update biometric and compliance-related fields
+    let complianceScore = 0;
+
+    // if (passwordStrength === "strong") complianceScore += 30;
+    // else if (passwordStrength === "medium") complianceScore += 15;
+
+    if (prediction === "valid") complianceScore += 50;
+
+    if (agreementChecked === true) complianceScore += 20;
+
+    complianceScore += 10;
+
+    if (complianceScore > 100) complianceScore = 100;
+
+    // ✅ All good, update pattern and flags
     if (prediction === "valid") {
       await User.findByIdAndUpdate(user._id, {
-        biometricProfile: typingPattern, // store latest correct pattern
+        biometricProfile: typingPattern,
         isLastBiometricValid: true,
-        agreementChecked: agreementChecked === true, // ensure checkbox is tracked
-        passwordStrength,
+        agreementChecked: agreementChecked === true,
+        // passwordStrength,
+        complianceScore
       });
     }
-
-    // 🎯 Calculate Compliance Score (backend side)
-    let compliance = 0;
-    if (agreementChecked) compliance += 30;
-    if (passwordStrength === "medium") compliance += 20;
-    if (passwordStrength === "strong") compliance += 35;
-    if (prediction === "valid") compliance += 30;
-    if (user.phishingTrainingCompleted) compliance += 15;
-
-    if (compliance > 100) compliance = 100;
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -165,108 +243,177 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role,
         riskScore: score,
-        complianceScore: compliance,
-        passwordStrength,
+        // passwordStrength,
+
+        complianceScore
       },
     });
   } catch (err) {
     console.error("🔥 Login error:", err.message);
-    res.status(500).json({ message: "Server error during biometric validation" });
+    res.status(500).json({ message: "Server error during login" });
   }
 };
+
+
 
 export const requestOtp = async (req, res) => {
   const { email } = req.body;
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
   const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) return res.status(404).json({ message: 'User not found' });
 
-  otpStore[email] = {
-    otp,
-    timestamp: Date.now(),
-  };
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore[email] = { otp, timestamp: Date.now() };
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
-    auth: {
-      user: 'retailshield864@gmail.com',
-      pass: process.env.APP_PASSWORD,
-    },
+    auth: { user: 'retailshield864@gmail.com', pass: process.env.APP_PASSWORD }
   });
 
-  const mailOptions = {
-    from: 'RetailShield <retailshield864@gmail.com>',
-    to: email,
-    subject: 'RetailShield OTP - Reset Your Password',
-    text: `Hi,
+ const mailOptions = {
+  from: 'RetailShield <retailshield864@gmail.com>',
+  to: email,
+  subject: 'RetailShield OTP - Apply Your Transformation',
+  text: `Hi ${user.name},
 
-You recently requested to reset your password on RetailShield.
+Your one-time password (OTP) request has been generated successfully.
 
-Here’s your base OTP: ${otp}
+⚠️ Important: This is your base OTP — it is not valid as-is.
 
-🔒 Please note: This OTP is **not directly usable** as is.
-You'll need to apply specific transformations based on the strategy you selected during registration (e.g., reversing the OTP, adding a prefix, or digit shifting).
+To complete verification, you must apply the OTP transformation method you selected during registration (e.g., reverse, prefix, or digit shift). Only the correctly transformed version will be accepted by the system.
 
-If you did not initiate this request, please ignore this email.
+🧠 Base OTP: ${otp}
 
-– RetailShield Security Team`,
-  };
+If you did not request this OTP or suspect unauthorized activity, please contact support immediately.
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) return res.status(500).json({ message: "Failed to send OTP" });
-    return res.status(200).json({
-      message: "OTP sent",
-      otpTransformation: user.otpTransformation, // 🔁 Send it here
-    });
+– Retail Shield Security Team`
+};
+
+  transporter.sendMail(mailOptions, (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to send OTP' });
+    res.json({ message: 'OTP sent' });
   });
 };
 
+export const verifyOtp = async (req, res) => {
+const { email, otp } = req.body;
+
+const record = otpStore[email];
+if (!record || Date.now() - record.timestamp > 5 * 60 * 1000) {
+return res.status(400).json({ message: 'OTP expired or invalid' });
+}
+
+const baseOtp = record.otp;
+const user = await User.findOne({ email });
+if (!user) return res.status(404).json({ message: 'User not found' });
+
+let expected = baseOtp;
+switch (user.otpTransformation) {
+case 'reverse':
+expected = baseOtp.split('').reverse().join('');
+break;
+case 'prefix_42':
+expected = `42${baseOtp}`;
+break;
+case 'shift_+1':
+expected = baseOtp.split('').map(d => (parseInt(d) + 1) % 10).join('');
+break;
+case 'shift_-1':
+expected = baseOtp.split('').map(d => (parseInt(d) + 9) % 10).join('');
+break;
+default:
+break;
+}
+
+// Log everything for debug
+console.log("🧠 OTP Debug Logs:");
+console.log("User Email:", email);
+console.log("Base OTP:", baseOtp);
+console.log("Transformation:", user.otpTransformation);
+console.log("Expected OTP after transform:", expected);
+console.log("User Submitted OTP:", otp);
+
+if (otp !== expected) {
+return res.status(400).json({ message: 'Invalid transformed OTP' });
+}
+
+delete otpStore[email];
+return res.json({ message: 'OTP verified' });
+};
+
+
 
 export const resetPassword = async (req, res) => {
-  const { email, otp, newPassword } = req.body;
-  const entry = otpStore[email];
+const { email, newPassword } = req.body;
 
-  if (!entry) {
-    return res.status(400).json({ message: "OTP expired or invalid" });
+const user = await User.findOne({ email });
+if (!user) return res.status(404).json({ message: "User not found" });
+
+const hashed = await bcrypt.hash(newPassword, 10);
+await User.updateOne({ email }, { $set: { password: hashed } });
+
+return res.status(200).json({ message: "Password reset successfully" });
+};
+
+
+export const verifySecurityQuestion = async (req, res) => {
+  try {
+    const { email, answer } = req.body;
+
+    pgsql
+    Copy
+    Edit
+    if (!email || !answer) {
+      return res.status(400).json({ message: "Missing email or answer" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // If no question stored, deny
+    if (!user.securityQuestion || !user.securityAnswer) {
+      return res.status(400).json({ message: "No security question configured for this user" });
+    }
+
+    // Compare lowercase trimmed for flexibility
+    const normalizedAnswer = answer.trim().toLowerCase();
+    const correctAnswer = user.securityAnswer.trim().toLowerCase();
+
+    if (normalizedAnswer !== correctAnswer) {
+      return res.status(401).json({ message: "❌ Incorrect answer. Access denied." });
+    }
+
+    // ✅ All good, generate token and return
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    return res.status(200).json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        riskScore: user.riskScore || 0,
+      },
+    });
+  } catch (err) {
+    console.error("🚨 Security question error:", err.message);
+    return res.status(500).json({ message: "Server error during verification" });
   }
+};
 
-  const { otp: originalOtp } = entry;
 
-  // 🔍 Fetch user and their transformation strategy from DB
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
+export const getUserById = async (req, res) => {
+  try {
+    const userId = req.params.id;
 
-  const transform = user.otpTransformation;
+    const user = await User.findById(userId).select("-password"); // exclude password
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-  // 🔄 Apply transformation
-  let expectedOtp = originalOtp;
-
-  switch (transform) {
-    case 'reverse':
-      expectedOtp = originalOtp.split('').reverse().join('');
-      break;
-    case 'prefix_42':
-      expectedOtp = `42${originalOtp}`;
-      break;
-    case 'shift_+1':
-      expectedOtp = [...originalOtp].map(d => (parseInt(d) + 1) % 10).join('');
-      break;
-    case 'shift_-1':
-      expectedOtp = [...originalOtp].map(d => (parseInt(d) + 9) % 10).join('');
-      break;
-    default:
-      break;
+    res.status(200).json(user);
+  } catch (err) {
+    console.error("Failed to fetch user:", err);
+    res.status(500).json({ message: "Server error" });
   }
-
-  if (otp !== expectedOtp) {
-    return res.status(400).json({ message: "Invalid OTP (Check your transformation rule)" });
-  }
-
-  const hashed = await bcrypt.hash(newPassword, 10);
-  await User.updateOne({ email }, { $set: { password: hashed } });
-
-  delete otpStore[email];
-
-  return res.status(200).json({ message: "Password reset successfully" });
 };
