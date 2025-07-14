@@ -56,71 +56,76 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="min-h-screen flex flex-col lg:flex-row ">
       <img src={logo} alt="Retail Shield Logo" className="absolute top-4 left-4 w-32 h-auto z-50" />
       <Toaster position="top-right" toastOptions={{ style: { background: "#333", color: "#fff" } }} />
 
       {/* LEFT: Registration Form */}
-      <div className="w-full lg:w-1/2 bg-white px-6 py-12 flex items-center justify-center text-black">
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-1/2 bg-white px-6 py-12 flex gap-5 items-center justify-center text-black">
+        <div className="w-full max-w-xl">
           <h2 className="text-3xl font-semibold text-center mb-4">Create Your Account</h2>
           <p className="text-sm text-gray-600 text-center mb-6">
             Join Retail CyberSecure to monitor & protect your retail infrastructure.
           </p>
 
           <form className="space-y-4" onSubmit={handleRegister}>
-            <div>
-              <label className="block text-sm mb-1">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="John Doe"
-              />
+            {/* Name + Email */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 mb-4">
+                <label className="block text-sm mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="John Doe"
+                />
+              </div>
+
+              <div className="flex-1 mb-4">
+                <label className="block text-sm mb-1">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="you@example.com"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="you@example.com"
-              />
+            {/* Password + Confirm Password */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 mb-4">
+                <label className="block text-sm mb-1">Password</label>
+                <input
+                  type="password"
+                  ref={passwordRef}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Create a strong password"
+                />
+              </div>
+
+              <div className="flex-1 mb-4">
+                <label className="block text-sm mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Confirm password"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm mb-1">Password</label>
-              <input
-                type="password"
-                ref={passwordRef}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Create a strong password"
-              />
-              <p className="text-sm text-gray-500 mt-1">Must be at least 10 characters.</p>
-            </div>
-
-            <div>
-              <label className="block text-sm mb-1">Confirm Password</label>
-              <input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Confirm password"
-              />
-            </div>
-
-            {/* 🔐 OTP Transformation Strategy */}
-            <div>
+            {/* OTP Transformation */}
+            <div className="mb-4">
               <label className="block text-sm mb-1">Select OTP Transformation Strategy</label>
               <select
                 value={otpTransformation}
@@ -139,6 +144,7 @@ const Register = () => {
               </p>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               className="w-full py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold hover:opacity-90 transition"
@@ -146,6 +152,7 @@ const Register = () => {
               Create Account
             </button>
           </form>
+
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

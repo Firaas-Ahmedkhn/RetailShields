@@ -38,6 +38,26 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  agreementChecked: {
+    type: Boolean,
+    default: false,
+  },
+
+  passwordStrength: {
+    type: String,
+    enum: ["weak", "medium", "strong"],
+    default: "weak",
+  },
+
+  isLastBiometricValid: {
+    type: Boolean,
+    default: false,
+  },
+
+  phishingTrainingCompleted: {
+    type: Boolean,
+    default: false,
+  },
 
 }, { timestamps: true });
 
