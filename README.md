@@ -44,8 +44,8 @@ We use publicly available datasets for keystroke dynamics:
 ## 🚀 Real- life Context
 In the past few years, cybersecurity has shifted focus — from purely technical threats to exploiting human weaknesses.
 
--# 🔐 In 2022, Uber was hacked by a teenager using stolen employee credentials obtained via social engineering.
--# 🎰 In 2023, MGM Resorts lost over $100 million after one successful helpdesk scam gave attackers internal access.
+ -🔐 In 2022, Uber was hacked by a teenager using stolen employee credentials obtained via social engineering.
+ -🎰 In 2023, MGM Resorts lost over $100 million after one successful helpdesk scam gave attackers internal access.
 
 These weren’t software bugs — they were employee-side vulnerabilities.
 
