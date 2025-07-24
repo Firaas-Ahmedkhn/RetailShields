@@ -40,10 +40,6 @@ const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      console.log("Frontend - Sending OTP:", otpValue);
-      console.log("Frontend - Email:", email.trim());
-
-     
       await axios.post('http://localhost:3000/api/auth/verify-otp', {
         email: email.trim(),
         otp: otpValue
@@ -52,7 +48,6 @@ const ForgotPassword = () => {
       toast.success('OTP verified! Redirecting...');
       navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`);
     } catch (err) {
-      console.error("Frontend - Error verifying OTP:", err?.response?.data);
       toast.error(err?.response?.data?.message || 'OTP verification failed');
     }
     setLoading(false);
@@ -68,31 +63,34 @@ const ForgotPassword = () => {
       </div>
 
       {/* Right Side Content */}
-      <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
-        <img src={logo} alt="Retail Shield" className="w-28 mb-6" />
+      <div className="w-full md:w-1/2 p-6 md:p-10 flex flex-col justify-center relative">
+        <img
+          src={logo}
+          alt="Retail Shield Logo"
+          className="absolute top-2 left-2 w-20 h-auto z-50 md:top-4 md:left-4 md:w-32"
+        />
 
-        <h1 className="text-3xl font-bold mb-1">Forgot Password?</h1>
-        <p className="text-gray-600 mb-8">
+        <h1 className="text-xl md:text-3xl font-bold mb-1">Forgot Password?</h1>
+        <p className="text-sm md:text-base text-gray-600 mb-8">
           Enter your registered email to receive a secure OTP and reset your password.
         </p>
 
         {/* Step 1: Email */}
         {step === 1 && (
           <div className="mb-6">
-            <label className="block mb-1 font-medium">Email Address</label>
+            <label className="block mb-1 font-medium text-sm md:text-base">Email Address</label>
             <div className="flex">
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-l border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-4 py-2 rounded-l border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
               />
               <button
                 onClick={sendOtp}
                 disabled={loading}
-                className={`px-5 py-2 rounded-r font-semibold text-white ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
+                className={`px-5 py-2 rounded-r font-semibold text-white text-sm md:text-base ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {loading ? 'Sending...' : 'Send OTP'}
               </button>
@@ -103,7 +101,7 @@ const ForgotPassword = () => {
         {/* Step 2: OTP */}
         {step === 2 && (
           <div className="mb-6">
-            <label className="block mb-2 font-medium">Enter OTP</label>
+            <label className="block mb-2 font-medium text-sm md:text-base">Enter OTP</label>
             <div className="flex space-x-3">
               {otp.map((digit, idx) => (
                 <input
@@ -113,15 +111,14 @@ const ForgotPassword = () => {
                   maxLength="1"
                   value={digit}
                   onChange={(e) => handleOtpChange(e.target.value, idx)}
-                  className="w-12 h-12 text-center text-xl border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-10 h-10 md:w-12 md:h-12 text-center text-lg md:text-xl border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               ))}
             </div>
             <button
               onClick={verifyOtp}
               disabled={loading}
-              className={`mt-5 w-full py-2 rounded font-semibold text-white ${loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
-                }`}
+              className={`mt-5 w-full py-2 rounded font-semibold text-white text-sm md:text-base ${loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
             >
               {loading ? 'Verifying...' : 'Verify OTP'}
             </button>

@@ -11,22 +11,39 @@ const riskColors = {
 const EventLogs = () => {
   const [logs, setLogs] = useState([]);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [currentPage]);
 
   const fetchLogs = async () => {
+    setLoading(true);
     try {
-      const res = await axios.get("http://localhost:3000/api/pos/logs");
-      setLogs(res.data);
+      const res = await axios.get(`http://localhost:3000/api/pos/logs?page=${currentPage}`);
+      setLogs(res.data.data || []);
+      setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       console.error("Error fetching logs:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const filteredLogs = logs.filter((log) =>
-    log.terminalId.toLowerCase().includes(search.toLowerCase())
+    log.terminalId?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const shimmerRow = (
+    <tr className="animate-pulse">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </td>
+      ))}
+    </tr>
   );
 
   return (
@@ -61,25 +78,57 @@ const EventLogs = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredLogs.map((log, idx) => (
-              <tr key={idx} className="border-b">
-                <td className="px-4 py-2">{log.terminalId}</td>
-                <td className="px-4 py-2">₹{log.amount}</td>
-                <td className="px-4 py-2">{log.time}</td>
-                <td className="px-4 py-2">{log.status}</td>
-                <td className="px-4 py-2 font-semibold" style={{ color: riskColors[log.riskLevel] }}>
-                  {log.riskLevel.toUpperCase()}
-                </td>
-                <td className="px-4 py-2">{log.activityType}</td>
-                <td className="px-4 py-2">{log.description}</td>
-              </tr>
-            ))}
+            {loading
+              ? Array.from({ length: 10 }).map((_, i) => (
+                  <React.Fragment key={i}>{shimmerRow}</React.Fragment>
+                ))
+              : filteredLogs.length > 0
+              ? filteredLogs.map((log, idx) => (
+                  <tr key={idx} className="border-b">
+                    <td className="px-4 py-2">{log.terminalId}</td>
+                    <td className="px-4 py-2">₹{log.amount}</td>
+                    <td className="px-4 py-2">{log.time}</td>
+                    <td className="px-4 py-2">{log.status}</td>
+                    <td
+                      className="px-4 py-2 font-semibold"
+                      style={{ color: riskColors[log.riskLevel] }}
+                    >
+                      {log.riskLevel?.toUpperCase()}
+                    </td>
+                    <td className="px-4 py-2">{log.activityType}</td>
+                    <td className="px-4 py-2">{log.description}</td>
+                  </tr>
+                ))
+              : !loading && (
+                  <tr>
+                    <td colSpan="7" className="text-center py-6 text-gray-400">
+                      No logs found.
+                    </td>
+                  </tr>
+                )}
           </tbody>
         </table>
+      </div>
 
-        {filteredLogs.length === 0 && (
-          <div className="text-center py-6 text-gray-400">No logs found.</div>
-        )}
+      {/* ⏩ Pagination */}
+      <div className="flex justify-between items-center mt-6">
+        <button
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage((prev) => prev - 1)}
+        >
+          Previous
+        </button>
+        <span className="text-sm text-gray-600">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage((prev) => prev + 1)}
+        >
+          Next
+        </button>
       </div>
     </div>
   );

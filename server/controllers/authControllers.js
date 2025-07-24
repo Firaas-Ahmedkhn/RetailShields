@@ -97,8 +97,9 @@ export const login = async (req, res) => {
       user.loginAttempts += 1;
 
       if (user.loginAttempts >= 3) {
+        user.failedLoginAttempts += 1; // ✅ increment failed logins
         user.lockUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hrs
-        user.loginAttempts = 0; // reset attempts after lock
+        user.loginAttempts = 0; // reset loginAttempts
 
         // Send email notification
         try {
@@ -116,7 +117,6 @@ export const login = async (req, res) => {
             subject: "🚨 Account Locked After Multiple Failed Attempts",
             text: `Hi ${user.name},\n\nYour account has been locked due to multiple incorrect password attempts.\n\n⏳ You can try again after: ${user.lockUntil.toLocaleString()}\n\nIf this wasn’t you, please contact support immediately.\n\n– Retail Shield Security`,
           });
-
         } catch (emailErr) {
           console.error("❌ Failed to send lock alert email:", emailErr.message);
         }
@@ -146,26 +146,37 @@ export const login = async (req, res) => {
     let score = -1;
     let prediction = "unknown";
 
-   try {
-  const response = await axios.post("http://localhost:8000/predict/biometric", {
-    originalProfile: user.biometricProfile,
-    attemptProfile: typingPattern,
-  });
+    try {
+      const response = await axios.post("http://localhost:8000/predict/biometric", {
+        originalProfile: user.biometricProfile,
+        attemptProfile: typingPattern,
+      });
 
-  score = response?.data?.score ?? -1;
-  prediction = response?.data?.prediction ?? "rejected";
+      score = response?.data?.score ?? -1;
+      prediction = response?.data?.prediction ?? "rejected";
 
-  console.log(`🧠 Biometric score for ${user.email}:`, score, '| Prediction:', prediction);
-} catch (err) {
-  return res.status(500).json({ message: "Biometric comparison failed. Try again." });
-}
+      console.log(`🧠 Biometric score for ${user.email}:`, score, '| Prediction:', prediction);
+    } catch (err) {
+      return res.status(500).json({ message: "Biometric comparison failed. Try again." });
+    }
 
     if (prediction === "rejected") {
-      console.log("Rejected:",score)
+      console.log("Rejected:", score)
       return res.status(403).json({ message: "❌ Biometric rejected. Access denied.", score });
-      
+
     }
-    if (prediction === "suspicious") {
+    if (prediction === "suspicious" || prediction === "threat") {
+      // Increment user's threat count
+      user.threats = (user.threats || 0) + 1;
+      user.threatLogs = user.threatLogs || [];
+      user.threatLogs.push({
+        timestamp: new Date(),
+        type: prediction,
+        biometricScore: score,
+        ip: req.ip, // optional: log IP if behind a proxy use req.headers['x-forwarded-for']
+      });
+      await user.save();
+
       // Send email to alert the user
       try {
         const transporter = nodemailer.createTransport({
@@ -190,7 +201,7 @@ You’ve been redirected to answer a security question to confirm it’s really 
 
 If this wasn’t you, please change your password immediately and contact support.
 
-– Retail Shield Security Team`
+– Retail Shield Security Team`,
         });
 
       } catch (emailErr) {
@@ -207,12 +218,16 @@ If this wasn’t you, please change your password immediately and contact suppor
 
     let complianceScore = 0;
 
-    // if (passwordStrength === "strong") complianceScore += 30;
-    // else if (passwordStrength === "medium") complianceScore += 15;
+    if (passwordStrength === "strong") complianceScore += 30;
+    else if (passwordStrength === "medium") complianceScore += 15;
 
     if (prediction === "valid") complianceScore += 50;
 
-    if (agreementChecked === true) complianceScore += 20;
+    if (agreementChecked === true && user.agreementChecked !== true) {
+      complianceScore += 10;
+      user.agreementChecked = true;
+    }
+
 
     complianceScore += 10;
 
@@ -223,10 +238,15 @@ If this wasn’t you, please change your password immediately and contact suppor
       await User.findByIdAndUpdate(user._id, {
         biometricProfile: typingPattern,
         isLastBiometricValid: true,
-        agreementChecked: agreementChecked === true,
-        // passwordStrength,
-        complianceScore
+        agreementChecked: user.agreementChecked,
+        complianceScore,
       });
+    } else {
+      // Just update agreementChecked if applicable
+      if (agreementChecked === true && user.agreementChecked !== true) {
+        user.complianceScore = complianceScore;
+        await user.save();
+      }
     }
 
     const token = jwt.sign(
@@ -269,11 +289,11 @@ export const requestOtp = async (req, res) => {
     auth: { user: 'retailshield864@gmail.com', pass: process.env.APP_PASSWORD }
   });
 
- const mailOptions = {
-  from: 'RetailShield <retailshield864@gmail.com>',
-  to: email,
-  subject: 'RetailShield OTP - Apply Your Transformation',
-  text: `Hi ${user.name},
+  const mailOptions = {
+    from: 'RetailShield <retailshield864@gmail.com>',
+    to: email,
+    subject: 'RetailShield OTP - Apply Your Transformation',
+    text: `Hi ${user.name},
 
 Your one-time password (OTP) request has been generated successfully.
 
@@ -286,7 +306,7 @@ To complete verification, you must apply the OTP transformation method you selec
 If you did not request this OTP or suspect unauthorized activity, please contact support immediately.
 
 – Retail Shield Security Team`
-};
+  };
 
   transporter.sendMail(mailOptions, (err) => {
     if (err) return res.status(500).json({ message: 'Failed to send OTP' });
@@ -295,63 +315,63 @@ If you did not request this OTP or suspect unauthorized activity, please contact
 };
 
 export const verifyOtp = async (req, res) => {
-const { email, otp } = req.body;
+  const { email, otp } = req.body;
 
-const record = otpStore[email];
-if (!record || Date.now() - record.timestamp > 5 * 60 * 1000) {
-return res.status(400).json({ message: 'OTP expired or invalid' });
-}
+  const record = otpStore[email];
+  if (!record || Date.now() - record.timestamp > 5 * 60 * 1000) {
+    return res.status(400).json({ message: 'OTP expired or invalid' });
+  }
 
-const baseOtp = record.otp;
-const user = await User.findOne({ email });
-if (!user) return res.status(404).json({ message: 'User not found' });
+  const baseOtp = record.otp;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'User not found' });
 
-let expected = baseOtp;
-switch (user.otpTransformation) {
-case 'reverse':
-expected = baseOtp.split('').reverse().join('');
-break;
-case 'prefix_42':
-expected = `42${baseOtp}`;
-break;
-case 'shift_+1':
-expected = baseOtp.split('').map(d => (parseInt(d) + 1) % 10).join('');
-break;
-case 'shift_-1':
-expected = baseOtp.split('').map(d => (parseInt(d) + 9) % 10).join('');
-break;
-default:
-break;
-}
+  let expected = baseOtp;
+  switch (user.otpTransformation) {
+    case 'reverse':
+      expected = baseOtp.split('').reverse().join('');
+      break;
+    case 'prefix_42':
+      expected = `42${baseOtp}`;
+      break;
+    case 'shift_+1':
+      expected = baseOtp.split('').map(d => (parseInt(d) + 1) % 10).join('');
+      break;
+    case 'shift_-1':
+      expected = baseOtp.split('').map(d => (parseInt(d) + 9) % 10).join('');
+      break;
+    default:
+      break;
+  }
 
-// Log everything for debug
-console.log("🧠 OTP Debug Logs:");
-console.log("User Email:", email);
-console.log("Base OTP:", baseOtp);
-console.log("Transformation:", user.otpTransformation);
-console.log("Expected OTP after transform:", expected);
-console.log("User Submitted OTP:", otp);
+  // Log everything for debug
+  console.log("🧠 OTP Debug Logs:");
+  console.log("User Email:", email);
+  console.log("Base OTP:", baseOtp);
+  console.log("Transformation:", user.otpTransformation);
+  console.log("Expected OTP after transform:", expected);
+  console.log("User Submitted OTP:", otp);
 
-if (otp !== expected) {
-return res.status(400).json({ message: 'Invalid transformed OTP' });
-}
+  if (otp !== expected) {
+    return res.status(400).json({ message: 'Invalid transformed OTP' });
+  }
 
-delete otpStore[email];
-return res.json({ message: 'OTP verified' });
+  delete otpStore[email];
+  return res.json({ message: 'OTP verified' });
 };
 
 
 
 export const resetPassword = async (req, res) => {
-const { email, newPassword } = req.body;
+  const { email, newPassword } = req.body;
 
-const user = await User.findOne({ email });
-if (!user) return res.status(404).json({ message: "User not found" });
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: "User not found" });
 
-const hashed = await bcrypt.hash(newPassword, 10);
-await User.updateOne({ email }, { $set: { password: hashed } });
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await User.updateOne({ email }, { $set: { password: hashed } });
 
-return res.status(200).json({ message: "Password reset successfully" });
+  return res.status(200).json({ message: "Password reset successfully" });
 };
 
 
@@ -415,5 +435,114 @@ export const getUserById = async (req, res) => {
   } catch (err) {
     console.error("Failed to fetch user:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// GET: All users
+// GET /api/auth/users?search=&role=&page=1&limit=10
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const { search = "", role, page = 1, limit = 10 } = req.query;
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (role && ["admin", "employee"].includes(role)) {
+      query.role = role;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const users = await User.find(query)
+      .select("-password")
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const totalUsers = await User.countDocuments(query);
+
+    res.status(200).json({
+      users,
+      totalPages: Math.ceil(totalUsers / limit),
+      currentPage: parseInt(page),
+    });
+  } catch (err) {
+    console.error("Error fetching users:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// PUT: Update user
+export const updateUser = async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    if (!role) {
+      return res.status(400).json({ message: "Role is required" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { role },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "User updated successfully", user: updatedUser });
+  } catch (err) {
+    console.error("Error updating user:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// DELETE: Delete user
+export const deleteUser = async (req, res) => {
+  try {
+    const deletedUser = await User.findByIdAndDelete(req.params.id);
+
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting user:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+export const getSuspiciousLogins = async (req, res) => {
+  try {
+    const userId = req.query.id; // Get userId from query string
+    console.log("User ID from localStorage (query):", userId);
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    console.log("User's threat logs:", user.threatLogs);
+
+    const formattedLogs = (user.threatLogs || []).map(log => ({
+      time: log.timestamp,
+      ip: log.ip,
+      type: log.type,
+      biometricScore: log.biometricScore,
+      email: user.email
+    }));
+
+    res.status(200).json(formattedLogs);
+  } catch (err) {
+    console.error("Error fetching logs:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };

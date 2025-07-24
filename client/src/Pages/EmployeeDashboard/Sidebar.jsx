@@ -3,11 +3,8 @@ import {
   BarChart3,
   ShieldAlert,
   FileSearch,
-  CloudCog,
   Scale,
-  Settings2,
- 
-  LogOut
+  LogOut,
 } from "lucide-react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import toast from 'react-hot-toast';
@@ -19,63 +16,57 @@ const Sidebar = ({ activePage, setActivePage }) => {
     { name: "Dashboard", icon: LayoutDashboard },
     { name: "POS Monitor", icon: BarChart3 },
     { name: "Event Logs", icon: FileSearch },
-    { name: "Phishing Simulation", icon: ShieldAlert },
+    { name: "Phishing Simulation (Beta)", icon: ShieldAlert },
     { name: "Vendor Logs", icon: FileSearch },
-    // { name: "Cloud Audit", icon: CloudCog },
     { name: "Compliance Score", icon: Scale },
-    // { name: "Admin Panel", icon: Settings2 }, // Enable if needed
   ];
 
   const [collapsed, setCollapsed] = useState(false);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-  // Clear user session
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    toast.success("Logged out successfully!");
+    navigate('/');
+  };
 
-  // Optional: toast confirmation
-  toast.success("Logged out successfully!");
-
-  // Redirect to login
-  navigate('/');
-}
   return (
     <div
-      className={`bg-[#252525] text-white shadow-xl transition-all duration-300 ${
+      className={`bg-white text-[#111827] transition-all duration-300 position-fixed rounded-xl h-[calc(100vh-2rem)] my-4 ml-4 flex flex-col justify-between ${
         collapsed ? "w-20" : "w-64"
-      } h-[calc(100vh-2rem)] my-4 ml-4 rounded-xl flex flex-col justify-between`}
+      }`}
     >
       {/* Top Section */}
       <div>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
+        <div className="flex items-center justify-between px-4 py-4  border-gray-200">
           {!collapsed && (
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-lg font-semibold text-gray-800">
               RetailShield
             </h1>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="text-gray-400 hover:text-white transition"
+            className="text-gray-500 hover:text-gray-800 transition"
           >
             {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
           </button>
         </div>
 
         {/* Navigation Links */}
-        <div className="flex flex-col gap-2 p-2">
+        <div className="flex flex-col gap-1 p-2">
           {links.map(({ name, icon: Icon }) => (
             <button
               key={name}
               onClick={() => setActivePage(name.toLowerCase())}
-              className={`flex items-center gap-3 px-4 py-2 rounded-lg transition text-sm ${
+              className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition ${
                 activePage === name.toLowerCase()
-                  ? "bg-gradient-to-r from-blue-500 to-purple-600 shadow-md"
-                  : "hover:bg-white/10"
+                  ? "bg-gray-100 text-gray-900"
+                  : "hover:bg-gray-50 text-gray-600"
               }`}
             >
-              <Icon size={18} />
+              <Icon size={18} className="shrink-0" />
               {!collapsed && <span>{name}</span>}
             </button>
           ))}
@@ -86,7 +77,7 @@ const Sidebar = ({ activePage, setActivePage }) => {
       <div className="flex flex-col pl-3 pb-4">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg hover:bg-white/10 transition"
+          className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 transition"
         >
           <LogOut size={18} />
           {!collapsed && <span>Logout</span>}

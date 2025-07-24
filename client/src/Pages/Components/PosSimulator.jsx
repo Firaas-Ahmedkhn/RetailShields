@@ -9,27 +9,30 @@ const POSSimulator = () => {
   const [time, setTime] = useState('');
 
   const handleSubmit = async () => {
-    try {
-      const response = await axios.post('http://localhost:3000/api/pos/log', {
-        terminalId,
-        amount: parseFloat(amount),
-        time,
-      });
+  try {
+    const response = await axios.post('http://localhost:3000/api/pos/log', {
+      terminalId,
+      amount: parseFloat(amount),
+      time,
+    });
 
-      const { event } = response.data;
+    const { event } = response.data;
 
-      toast.success(
-        `🛡️ Logged as ${event.activityType.toUpperCase()} | Risk: ${event.riskLevel.toUpperCase()}`,
-        { duration: 5000 }
-      );
-      setTerminalId(''),
-      setAmount(''),
-      setTime('')
-    } catch (err) {
-      console.error(err);
-      toast.error("❌ Failed to send event");
-    }
-  };
+    toast.success(
+      `🧾 Logged POS event — ${event.activityType.toUpperCase()} | Risk: ${event.riskLevel.toUpperCase()} | Status: ${event.status.toUpperCase()}`,
+      { duration: 5000 }
+    );
+
+    // Clear form inputs after success
+    setTerminalId('');
+    setAmount('');
+    setTime('');
+  } catch (err) {
+    console.error("POS log error:", err);
+    toast.error("❌ Failed to log POS event. Please try again.");
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1f1c2c] via-[#111] to-[#87CEEB] px-4 py-12">

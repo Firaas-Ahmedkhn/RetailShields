@@ -43,8 +43,6 @@ const Register = () => {
       return toast.error("⚠️ Typing pattern not captured properly. Try again.");
 
     try {
-      console.log("📍 IP being sent:", registeredIp);
-
       const response = await axios.post('http://localhost:3000/api/auth/register', {
         name,
         email,
@@ -52,37 +50,37 @@ const Register = () => {
         role: 'employee',
         biometricProfile,
         otpTransformation,
-        registeredIp, // ✅ You’ve defined and fetched this properly
+        registeredIp,
       });
-
-      console.log("📡 Backend response:", response.data);
 
       toast.success("✅ Registered successfully!");
       resetTypingTracker();
       setTimeout(() => navigate('/'), 1200);
     } catch (err) {
-      console.error("❌ Registration Error:", err);
       toast.error(err?.response?.data?.message || "Registration failed");
     }
   };
 
-
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row ">
-      <img src={logo} alt="Retail Shield Logo" className="absolute top-4 left-4 w-32 h-auto z-50" />
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      <img
+        src={logo}
+        alt="Retail Shield Logo"
+        className="absolute top-2 left-2 w-24 h-auto z-50 lg:top-4 lg:left-4 lg:w-32"
+      />
       <Toaster position="top-right" toastOptions={{ style: { background: "#333", color: "#fff" } }} />
 
       {/* LEFT: Registration Form */}
-      <div className="w-full lg:w-1/2 bg-white px-6 py-12 flex gap-5 items-center justify-center text-black">
+      <div className="w-full lg:w-1/2 bg-white px-6 py-12 flex items-center justify-center text-black">
         <div className="w-full max-w-xl">
-          <h2 className="text-3xl font-semibold text-center mb-4">Create Your Account</h2>
-          <p className="text-sm text-gray-600 text-center mb-6">
+          <h2 className="text-2xl lg:text-3xl font-semibold text-center mb-4">Create Your Account</h2>
+          <p className="text-sm lg:text-base text-gray-600 text-center mb-6">
             Join Retail CyberSecure to monitor & protect your retail infrastructure.
           </p>
 
           <form className="space-y-4" onSubmit={handleRegister}>
             {/* Name + Email */}
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row md:gap-4 ">
               <div className="flex-1 mb-4">
                 <label className="block text-sm mb-1">Full Name</label>
                 <input
@@ -90,7 +88,7 @@ const Register = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full px-4 py-2 text-sm lg:text-base rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder="John Doe"
                 />
               </div>
@@ -102,14 +100,14 @@ const Register = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full px-4 py-2 text-sm lg:text-base rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder="you@example.com"
                 />
               </div>
             </div>
 
             {/* Password + Confirm Password */}
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row md:gap-4">
               <div className="flex-1 mb-4">
                 <label className="block text-sm mb-1">Password</label>
                 <input
@@ -118,7 +116,7 @@ const Register = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full px-4 py-2 text-sm lg:text-base rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder="Create a strong password"
                 />
               </div>
@@ -130,7 +128,7 @@ const Register = () => {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
-                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full px-4 py-2 text-sm lg:text-base rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder="Confirm password"
                 />
               </div>
@@ -138,18 +136,18 @@ const Register = () => {
 
             {/* OTP Transformation */}
             <div className="mb-4">
-              <label className="block text-sm mb-1 ">Select OTP Transformation Strategy</label>
+              <label className="block text-sm mb-1">Select OTP Transformation Strategy</label>
               <select
                 value={otpTransformation}
                 onChange={(e) => setOtpTransformation(e.target.value)}
                 required
-                className="w-full px-4 py-2 rounded-lg bg-gray-100 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full px-4 py-2 text-xs lg:text-base rounded-lg bg-gray-100 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
-                <option  className ="text-gray-400 bg-gray-400" value="">-- Select a strategy --</option>
+                <option value="">-- Select a strategy --</option>
                 <option value="reverse">Reverse OTP</option>
-                <option value="prefix_42">Prefix 42</option>
-                <option value="shift_+1">Shift digits +1</option>
-                <option value="shift_-1">Shift digits -1</option>
+                <option value="prefix_42 text-base">Prefix 42</option>
+                <option value="shift_+1 text-base">Shift digits +1</option>
+                <option value="shift_-1 text-base">Shift digits -1</option>
               </select>
               <p className="text-xs text-gray-500 mt-1">
                 You'll have to apply this transformation to your OTP during password reset.
@@ -161,15 +159,13 @@ const Register = () => {
               type="submit"
               disabled={!registeredIp || !name || !email || !password || !confirm || !otpTransformation}
               className={`w-full py-2 rounded-lg font-semibold text-white transition
-    ${(!registeredIp || !name || !email || !password || !confirm || !otpTransformation)
+                ${(!registeredIp || !name || !email || !password || !confirm || !otpTransformation)
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90'}`}
             >
               {registeredIp ? 'Create Account' : 'Fetching IP...'}
             </button>
-
           </form>
-
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

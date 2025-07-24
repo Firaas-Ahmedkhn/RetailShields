@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import logo from '../../../assets/logo.png';
-import resetIllustration from '../../../assets/forgot.png'; // make sure you have this image
+import resetIllustration from '../../../assets/forgot.png';
 
 const ResetPassword = () => {
     const navigate = useNavigate();
@@ -37,51 +37,62 @@ const ResetPassword = () => {
         <div className="min-h-screen flex bg-white text-black">
             <Toaster position="top-right" />
 
-            {/* Left image panel */}
+            {/* Left image panel - hidden on mobile */}
             <div className="hidden md:flex w-1/2 bg-[#0f172a] items-center justify-center p-10">
                 <img src={resetIllustration} alt="Reset Illustration" className="w-3/4 object-contain" />
             </div>
 
             {/* Right form section */}
-            <div className="w-full md:w-1/2 flex flex-col justify-center px-10">
-                <img src={logo} alt="Retail Shield" className="w-32 mb-8" />
-                <h2 className="text-3xl font-bold mb-2">Reset Your Password</h2>
-                <p className="text-gray-600 mb-6">Set a strong new password to secure your account.</p>
+            <div className="w-full md:w-1/2 flex flex-col justify-center px-6 md:px-10 relative">
+                {/* Logo - sticky top-left on mobile */}
+                <img
+                    src={logo}
+                    alt="Retail Shield"
+                    className="absolute top-4 left-4 w-24 h-auto z-50 md:static md:mb-8"
+                />
 
-                <form onSubmit={handleReset} className="space-y-5">
-                    <div>
-                        <label className="block mb-1 font-medium">New Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter new password"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                        />
-                    </div>
+                <div className="mt-20 md:mt-0">
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Reset Your Password</h2>
+                    <p className="text-sm md:text-base text-gray-600 mb-6">
+                        Set a strong new password to secure your account.
+                    </p>
 
-                    <div>
-                        <label className="block mb-1 font-medium">Confirm Password</label>
-                        <input
-                            type="password"
-                            value={confirm}
-                            onChange={(e) => setConfirm(e.target.value)}
-                            placeholder="Re-enter password"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none"
-                        />
-                    </div>
+                    <form onSubmit={handleReset} className="space-y-5">
+                        <div>
+                            <label className="block mb-1 font-medium text-sm md:text-base">New Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none text-sm md:text-base"
+                            />
+                        </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full py-2 rounded-lg text-white font-semibold ${loading
-                                ? 'bg-gray-500'
-                                : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90'
+                        <div>
+                            <label className="block mb-1 font-medium text-sm md:text-base">Confirm Password</label>
+                            <input
+                                type="password"
+                                value={confirm}
+                                onChange={(e) => setConfirm(e.target.value)}
+                                placeholder="Re-enter password"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none text-sm md:text-base"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`w-full py-2 rounded-lg text-white font-semibold text-sm md:text-base ${
+                                loading
+                                    ? 'bg-gray-500'
+                                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90'
                             }`}
-                    >
-                        {loading ? 'Resetting...' : 'Reset Password'}
-                    </button>
-                </form>
+                        >
+                            {loading ? 'Resetting...' : 'Reset Password'}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );

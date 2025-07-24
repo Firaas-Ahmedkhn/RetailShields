@@ -19,6 +19,23 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+  },
+  threats: {
+    type: Number,
+    default: 0,
+  },
+
+  threatLogs: [
+    {
+      timestamp: { type: Date, default: Date.now },
+      type: { type: String, default: "suspicious" }, // e.g., 'suspicious', 'threat'
+      biometricScore: Number,
+      ip: String
+    }
+  ],
 
   securityQuestion: {
     type: String,
@@ -27,6 +44,11 @@ const UserSchema = new mongoose.Schema({
   securityAnswer: {
     type: String,
     required: false,
+  },
+
+  EmbeddingVector: {
+    type: [Number],
+    default: [],
   },
 
   lockUntil: {

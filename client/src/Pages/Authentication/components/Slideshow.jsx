@@ -46,22 +46,25 @@ const SlideshowWithText = () => {
   };
 
   return (
-    <div className="w-full lg:w-1/2 bg-[#f0f0f0] relative flex flex-col items-center justify-center p-10 overflow-hidden">
-      {/* Top Heading */}
-      <h1
-        className="text-4xl font-bold mb-6 text-center"
-        
-      >
+    <div className="w-full md:w-1/2 bg-[#f0f0f0] hidden  relative md:flex flex-col items-center justify-center p-10 overflow-hidden">
+      {/* Top Heading (always visible) */}
+      <h1 className="text-4xl font-bold mb-3 text-center">
         Welcome to{" "}
         <span className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
           Retail Shield
-        </span>{" "}
-      
+        </span>
       </h1>
 
-      {/* Right Side Content */}
-      <div ref={rightSideRef} className="relative w-full h-full flex items-center justify-center">
-        {/* Central Image */}
+      {/* Extra Mobile Text */}
+      <p className="text-gray-600 text-base mt-1 block md:hidden text-center">
+        Empowering your store’s digital defenses.
+      </p>
+
+      {/* Right Side (hidden on mobile) */}
+      <div
+        ref={rightSideRef}
+        className="relative w-full h-full items-center justify-center hidden md:flex"
+      >
         <img
           src={pic1}
           alt="Cybersecurity"

@@ -18,7 +18,7 @@ const DashboardLayout = () => {
     case 'dashboard': return <MainDash />;
     case 'pos monitor': return <Pos />;
     case 'event logs':return <EventLogs />;
-    case 'phishing simulation': return <PhishingSimulation />;
+    case 'phishing simulation (beta)': return <PhishingSimulation />;
     case 'vendor logs': return <VendorLogs />;
     case 'cloud audit': return <CloudAudit />;
     case 'compliance score': return <ComplianceScore />;
