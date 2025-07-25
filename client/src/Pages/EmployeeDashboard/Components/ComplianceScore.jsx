@@ -163,7 +163,7 @@ const ComplianceScore = () => {
               <h3 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
                  Compliance Metrics
               </h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-5">
                 <motion.div
                   className="bg-white border border-gray-100 rounded-xl p-4 shadow-md"
                   variants={cardVariants}

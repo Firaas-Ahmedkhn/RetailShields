@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import MainDash from "./Components/AdminMainDash";
 import ManageUsers from "./Components/ManageUsers";
 import Reports from "./Components/ReportsAdmin";
-import Settings from "./Components/ReportsAdmin";
+import Settings from "./Components/SettingsAdmin";
 import ComplianceScore from "./Components/ReportsAdmin";
 import PhishingSimulation from "./Components/ReportsAdmin";
 import VendorLogs from "../EmployeeDashboard/Components/VendorLogs"

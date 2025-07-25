@@ -546,3 +546,40 @@ export const getSuspiciousLogins = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+
+export const getSuspiciousUsers = async (req, res) => {
+  try {
+    const { search = "" } = req.query;
+
+    // Main suspicious activity filters
+    const suspiciousFilter = {
+      $or: [
+        { failedLoginAttempts: { $gt: 0 } },
+        { threats: { $gt: 0 } },
+        { "threatLogs.0": { $exists: true } }
+      ]
+    };
+
+    // Search condition
+    const searchFilter = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } }
+          ]
+        }
+      : {};
+
+    // Combine both if search is applied
+    const finalQuery = search
+      ? { $and: [suspiciousFilter, searchFilter] }
+      : suspiciousFilter;
+
+    const users = await User.find(finalQuery).sort({ updatedAt: -1 });
+
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching suspicious users", error: err });
+  }
+};

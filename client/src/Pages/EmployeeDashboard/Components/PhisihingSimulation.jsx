@@ -24,7 +24,7 @@ const PhishingSimulation = () => {
       }
     } catch (err) {
       console.error("Error from API:", err);
-      setError("❌ Something went wrong while analyzing. Please check your backend.");
+      setError("❌ Something went wrong while analyzing.");
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,7 @@ const PhishingSimulation = () => {
     <div className="p-6 min-h-screen bg-white rounded-lg text-white">
       <div className="mb-6">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-          Phishing Simulation
+          Phishing Simulation (Beta)
         </h1>
         <p className="text-gray-600 mt-1 text-sm">
           Simulate a phishing attempt and check its threat level using AI.
@@ -62,7 +62,7 @@ const PhishingSimulation = () => {
 
         {loading && (
           <div className="mt-4 text-center text-blue-500 font-medium animate-pulse">
-            🔍 AI is analyzing... Sit back and relax!
+             AI is analyzing... Sit back and relax!
           </div>
         )}
 
