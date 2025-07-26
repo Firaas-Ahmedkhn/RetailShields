@@ -101,6 +101,10 @@ Retail Shield stops attackers, even if they have the correct password.
  - Client -> npm install | npm run dev
  - Server -> npm install | npm run dev
  - Backend ->  pip install -r requirements.txt | uvicorn main:app --reload --port 8000
+   
+## NOTE- 
+  The website shown in the starting of the video was just for pitching the idea and telling how it is different from others, the link to that website is -
+  [https://retailshield-smart-auth.vercel.app/](url)
 
 ## 🤝 Let’s Collaborate
 
