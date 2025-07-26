@@ -59,7 +59,7 @@ const AdminDashCards = () => {
         icon={<FaLock />}
         title="Failed Login Attempts"
         value={stats.failedLogins}
-        subtitle="Today’s attempts"
+        subtitle="Total attempts"
         bg="bg-red-50"
         border="border border-red-200"
         color="text-red-500"

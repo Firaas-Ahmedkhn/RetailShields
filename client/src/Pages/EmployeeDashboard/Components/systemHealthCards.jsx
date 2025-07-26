@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
+import { useParams } from 'react-router-dom';
 import { Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -14,6 +15,7 @@ import { CheckCircle, AlertTriangle, Clock, Cpu, MemoryStick } from 'lucide-reac
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const SystemHealthCards = () => {
+  const { id } = useParams();
   const [health, setHealth] = useState(null);
   const [suspiciousLogin, setSuspiciousLogin] = useState(null);
   const [markAsRead, setMarkAsRead] = useState(
@@ -37,19 +39,20 @@ const SystemHealthCards = () => {
 
     const fetchSuspiciousLogin = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem("user"));
-        const userId = user?.id;
-        if (!userId) {
-          console.error("User ID not found in localStorage");
-          return;
-        }
+        // const user = JSON.parse(localStorage.getItem("user"));
+        // const userId = user?.id;
+        // if (!userId) {
+        //   console.error("User ID not found in localStorage");
+        //   return;
+        // }
+
 
         if (markAsRead) {
           setSuspiciousLogin("none");
           return;
         }
 
-        const res = await axios.get(`http://localhost:3000/api/auth/suslogin?id=${userId}`);
+        const res = await axios.get(`http://localhost:3000/api/auth/suslogin?id=${id}`);
         if (res.data.length > 0) {
           const latest = res.data[res.data.length - 1];
           setSuspiciousLogin(latest);

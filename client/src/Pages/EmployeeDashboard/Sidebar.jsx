@@ -25,8 +25,7 @@ const Sidebar = ({ activePage, setActivePage }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+   localStorage.clear()
     toast.success("Logged out successfully!");
     navigate('/');
   };

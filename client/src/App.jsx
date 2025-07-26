@@ -27,7 +27,7 @@ const App = () => {
 
         {/* Protected Routes */}
         <Route
-          path="/employee-dashboard"
+          path="/employee-dashboard/:id"
           element={
             <ProtectedRoute>
               <DashboardLayout />

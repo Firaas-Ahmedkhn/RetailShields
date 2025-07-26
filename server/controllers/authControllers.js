@@ -22,9 +22,20 @@ export const register = async (req, res) => {
       biometricProfile,
       otpTransformation,
       agreementChecked,
+      // ✅ New field
+      securityAnswer,   // ✅ New field
     } = req.body;
 
-    if (!name || !email || !password || !role || !biometricProfile || !otpTransformation) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !role ||
+      !biometricProfile ||
+      !otpTransformation ||
+
+      !securityAnswer // ✅ Ensure these are required
+    ) {
       return res.status(400).json({ message: "Missing or invalid input" });
     }
 
@@ -33,6 +44,10 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ Hash the security answer (optional but recommended)
+    const hashedSecurityAnswer = await bcrypt.hash(securityAnswer, 10);
+
     // Check password strength using zxcvbn
     const strengthScore = zxcvbn(password).score;
     let passwordStrength = "weak";
@@ -43,6 +58,7 @@ export const register = async (req, res) => {
     let complianceScore = 0;
     if (passwordStrength === "strong") complianceScore += 30;
     else if (passwordStrength === "medium") complianceScore += 15;
+
     // 🔍 Capture IP address from headers (or fallback)
     let ip = req.body.registeredIp;
     if (!ip || ip.trim() === '') {
@@ -59,11 +75,12 @@ export const register = async (req, res) => {
       registeredIp: ip,
       passwordStrength,
       complianceScore,
-      agreementChecked: agreementChecked === true
+      agreementChecked: agreementChecked === true,
+      // ✅ Store question as-is
+      securityAnswer: hashedSecurityAnswer,  // ✅ Store hashed answer
     });
 
     console.log(ip);
-
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
@@ -71,6 +88,7 @@ export const register = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // ✅ LOGIN
 export const login = async (req, res) => {
@@ -212,8 +230,10 @@ If this wasn’t you, please change your password immediately and contact suppor
       return res.status(403).json({
         message: "Suspicious biometric behavior. Please answer your security question.",
         redirectToSecurityQuestion: true,
+        email: user.email,
         question: user.securityQuestion
       });
+
     }
 
     let complianceScore = 0;
@@ -375,66 +395,63 @@ export const resetPassword = async (req, res) => {
 };
 
 
-export const verifySecurityQuestion = async (req, res) => {
-  try {
-    const { email, answer } = req.body;
+// export const verifySecurityQuestion = async (req, res) => {
+//   try {
+//     const { email, answer } = req.body;
 
-    pgsql
-    Copy
-    Edit
-    if (!email || !answer) {
-      return res.status(400).json({ message: "Missing email or answer" });
-    }
+//     pgsql
+//     Copy
+//     Edit
+//     if (!email || !answer) {
+//       return res.status(400).json({ message: "Missing email or answer" });
+//     }
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+//     const user = await User.findOne({ email });
+//     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // If no question stored, deny
-    if (!user.securityQuestion || !user.securityAnswer) {
-      return res.status(400).json({ message: "No security question configured for this user" });
-    }
+//     // If no question stored, deny
+//     if (!user.securityQuestion || !user.securityAnswer) {
+//       return res.status(400).json({ message: "No security question configured for this user" });
+//     }
 
-    // Compare lowercase trimmed for flexibility
-    const normalizedAnswer = answer.trim().toLowerCase();
-    const correctAnswer = user.securityAnswer.trim().toLowerCase();
+//     // Compare lowercase trimmed for flexibility
+//     const normalizedAnswer = answer.trim().toLowerCase();
+//     const correctAnswer = user.securityAnswer.trim().toLowerCase();
 
-    if (normalizedAnswer !== correctAnswer) {
-      return res.status(401).json({ message: "❌ Incorrect answer. Access denied." });
-    }
+//     if (normalizedAnswer !== correctAnswer) {
+//       return res.status(401).json({ message: "❌ Incorrect answer. Access denied." });
+//     }
 
-    // ✅ All good, generate token and return
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+//     // ✅ All good, generate token and return
+//     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+//       expiresIn: "1d",
+//     });
 
-    return res.status(200).json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        riskScore: user.riskScore || 0,
-      },
-    });
-  } catch (err) {
-    console.error("🚨 Security question error:", err.message);
-    return res.status(500).json({ message: "Server error during verification" });
-  }
-};
+//     return res.status(200).json({
+//       token,
+//       user: {
+//         id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         role: user.role,
+//         riskScore: user.riskScore || 0,
+//       },
+//     });
+//   } catch (err) {
+//     console.error("🚨 Security question error:", err.message);
+//     return res.status(500).json({ message: "Server error during verification" });
+//   }
+// };
 
 
 export const getUserById = async (req, res) => {
+  const { id } = req.params; // <-- ID from URL
   try {
-    const userId = req.params.id;
-
-    const user = await User.findById(userId).select("-password"); // exclude password
-    if (!user) return res.status(404).json({ message: "User not found" });
-
+    const user = await User.findById(id).select('-password -securityAnswer');
+    if (!user) return res.status(404).json({ message: 'User not found' });
     res.status(200).json(user);
-  } catch (err) {
-    console.error("Failed to fetch user:", err);
-    res.status(500).json({ message: "Server error" });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -564,11 +581,11 @@ export const getSuspiciousUsers = async (req, res) => {
     // Search condition
     const searchFilter = search
       ? {
-          $or: [
-            { name: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } }
-          ]
-        }
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } }
+        ]
+      }
       : {};
 
     // Combine both if search is applied
@@ -581,5 +598,44 @@ export const getSuspiciousUsers = async (req, res) => {
     res.status(200).json(users);
   } catch (err) {
     res.status(500).json({ message: "Error fetching suspicious users", error: err });
+  }
+};
+
+
+export const verifySecurityQuestion = async (req, res) =>{
+  const { email, answer } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(answer, user.securityAnswer);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Security answer is incorrect" });
+    }
+
+    // ✅ Generate token like login
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };

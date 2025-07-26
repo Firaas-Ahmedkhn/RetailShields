@@ -3,6 +3,7 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { Shield, CheckCircle, Key, AlertCircle, Info } from "lucide-react";
 import Compliancescorebar from "./Compliancescorebar";
+import { useParams } from "react-router-dom";
 
 const getScoreColor = (score) => {
   if (score >= 80) return "text-green-400 border-green-400";
@@ -16,19 +17,22 @@ const ComplianceScore = () => {
   const cardRef = useRef(null);
   const scoreRef = useRef(null);
   const breakdownRef = useRef(null);
+  const { id } = useParams();
+ 
+  useEffect(()=>{
+    const fetchUser=async()=>{
+      try{
+         const res = await axios.get(`http://localhost:3000/api/auth/users/${id}`);
+         setUser(res.data);
+      }catch (err){
+         console.error('Error fetching user:', err);
 
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("user"));
-    if (stored) {
-      axios
-        .get(`http://localhost:3000/api/auth/users/${stored.id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        .then((res) => setUser(res.data))
-        .catch((err) => console.error("Fetch error:", err.message));
-    }
-  }, []);
+      }
 
+    };
+     fetchUser();
+    },[id]
+  )
   if (!user) return <div className="text-gray-500 p-6">Loading...</div>;
 
   const { complianceScore = 0, passwordStrength, agreementChecked, riskScore } = user;
@@ -88,11 +92,11 @@ const ComplianceScore = () => {
       <div className="relative flex flex-col flex-1">
         {/* Compliance Score Section */}
         <div
-         className=" rounded-2xl   p-8 flex-1 mb-[3.75rem]"
+          className=" rounded-2xl   p-8 flex-1 mb-[3.75rem]"
           style={{
             maxHeight: "calc(100vh - 2rem - 2.5rem - 1rem)",
-          
-            
+
+
           }}
         >
           <div className="flex justify-between items-center mb-2">
@@ -161,7 +165,7 @@ const ComplianceScore = () => {
             {/* Breakdown Section */}
             <div ref={breakdownRef} className="space-y-3">
               <h3 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
-                 Compliance Metrics
+                Compliance Metrics
               </h3>
               <div className="grid grid-cols-2 gap-5">
                 <motion.div

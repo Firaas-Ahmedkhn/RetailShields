@@ -2,6 +2,7 @@ import  { useEffect, useState } from 'react';
 // import ComplianceScore from './ComplianceScore';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { useParams } from 'react-router-dom';
 
 const getScoreBadge = (score) => {
   if (score >= 80) return { label: '✅ Compliant', color: 'bg-green-500' };
@@ -13,29 +14,25 @@ const getScoreBadge = (score) => {
 
 const Compliancescorebar = () => {
       const [user, setUser] = useState('');
+        const { id } = useParams();
 
 
 
 
-     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
-    
-        if (!storedUser || !token) return;
-    
-        try {
-          const parsedUser = JSON.parse(storedUser);
-    
-          axios
-            .get(`http://localhost:3000/api/auth/users/${parsedUser.id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            .then((res) => setUser(res.data))
-            .catch((err) => console.error("Fetch error:", err.response?.data || err.message));
-        } catch (err) {
-          console.error("Error parsing user from localStorage", err);
-        }
-      }, []);
+    useEffect(()=>{
+    const fetchUser=async()=>{
+      try{
+         const res = await axios.get(`http://localhost:3000/api/auth/users/${id}`);
+         setUser(res.data);
+      }catch (err){
+         console.error('Error fetching user:', err);
+
+      }
+
+    };
+     fetchUser();
+    },[id]
+  )
 
        const { complianceScore = 0 } = user;
       const badge = getScoreBadge(complianceScore);

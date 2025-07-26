@@ -1,8 +1,8 @@
-
-
 import React, { useRef, useState, useEffect } from "react";
 import { initTypingTracker, cleanupTypingTracker, extractFeatures } from "../../utils/typingTracker.js";
 import { useNavigate } from 'react-router-dom';
+import Lottie from 'lottie-react';
+import loginAnimation from '../../assets/animations/login-loading.json';
 
 import toast, { Toaster } from 'react-hot-toast';
 import axios from 'axios';
@@ -17,28 +17,36 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
 
   useEffect(() => {
     initTypingTracker(passwordRef);
     return () => cleanupTypingTracker(passwordRef);
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!agreed) {
-      toast.error("Please agree to the terms before continuing.");
-      return;
-    }
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const typingPattern = extractFeatures(password);
-    if (typingPattern.length === 0) {
-      toast.error("⚠️ Typing pattern not captured properly. Try again.");
-      return;
-    }
+  if (!agreed) {
+    toast.error("Please agree to the terms before continuing.");
+    return;
+  }
 
+  setShowAnimation(true);
+  setLoading(true);
+
+  const typingPattern = extractFeatures(password);
+
+  if (typingPattern.length === 0) {
+    toast.error("⚠️ Typing pattern not captured properly. Try again.");
+    setShowAnimation(false);
+    setLoading(false);
+    return;
+  }
+
+  // ⏳ Delay API call by 5 seconds to show Lottie animation
+  setTimeout(async () => {
     try {
-      setLoading(true);
-
       const { data } = await axios.post('http://localhost:3000/api/auth/login', {
         email,
         password,
@@ -47,18 +55,29 @@ const Login = () => {
       });
 
       toast.success("✅ Login successful!");
+
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      setTimeout(() => navigate('/employee-dashboard'), 1000);
+
+      const { role, id } = data.user;
+
+      setTimeout(() => {
+        if (role === 'admin') {
+          navigate('/admin-dashboard');
+        } else {
+          navigate(`/employee-dashboard/${id}`);
+        }
+      }, 1000);
+
     } catch (err) {
       const data = err?.response?.data;
 
-      // ✅ Check for redirect flag in error response
       if (data?.redirectToSecurityQuestion) {
+        localStorage.setItem('tempmail', data.email);
         toast.error("⚠️ Suspicious biometric behavior. Please verify.");
         return navigate("/security-question", {
           state: {
-            email,
+            email: data.email,
             question: data.question,
           },
         });
@@ -66,12 +85,26 @@ const Login = () => {
 
       toast.error(data?.message || "❌ Login failed");
     } finally {
+      setShowAnimation(false);
       setLoading(false);
     }
-  }
+  }, 5000); // ⏱️ 5 second delay
+};
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row  ">
+    <div className="min-h-screen flex flex-col lg:flex-row relative">
+      {/* ✅ Face scan Lottie on login */}
+      {showAnimation && (
+        <div className="fixed top-0 left-0 w-full h-32 z-50 flex items-center justify-center bg-white shadow-md">
+          <Lottie
+            animationData={loginAnimation}
+            loop
+            autoplay
+            style={{ height: '80px', width: '80px' }}
+          />
+        </div>
+      )}
+
       <img
         src={logo}
         alt="Retail Shield Logo"
@@ -80,7 +113,6 @@ const Login = () => {
       <Toaster position="top-right" toastOptions={{ style: { background: "#333", color: "#fff" } }} />
 
       <div className="w-full lg:w-1/2 bg-white px-6 py-12 flex items-center justify-center text-black min-h-screen lg:min-h-fit">
-
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-semibold text-center mb-4">Welcome Back!</h2>
           <p className="text-sm text-gray-600 text-center mb-6">
@@ -116,7 +148,6 @@ const Login = () => {
 
             <div className="flex items-center space-x-2">
               <div className="flex flex-row justify-between items-center w-full mt-4">
-                {/* ✅ Checkbox and Terms */}
                 <div className="flex items-center mb-4">
                   <input
                     id="terms"
@@ -133,14 +164,10 @@ const Login = () => {
                   </label>
                 </div>
 
-                {/* ✅ Forgot Password on Right */}
                 <p className="text-sm text-gray-600">
                   <a href="/forgot-pass" className="text-blue-600 hover:underline">Forgot Password?</a>
                 </p>
               </div>
-
-
-
             </div>
 
             <button
@@ -168,7 +195,6 @@ const Login = () => {
           </form>
 
           <div className="mt-6 text-center">
-
             <p className="text-sm text-gray-600 mt-2">
               New to Retail Shield? <a href="/register" className="text-blue-600 hover:underline">Register</a>
             </p>
@@ -177,8 +203,6 @@ const Login = () => {
       </div>
 
       <SlideshowWithText />
-
-
     </div>
   );
 };

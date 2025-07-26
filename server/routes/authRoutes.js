@@ -16,7 +16,7 @@ router.post("/verify-otp", verifyOtp)
 router.get("/users", getAllUsers);
 router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
-router.get("/suslogin", verifyToken, getSuspiciousLogins)
+router.get("/suslogin", getSuspiciousLogins)
 router.get("/sususers",getSuspiciousUsers)
 
 

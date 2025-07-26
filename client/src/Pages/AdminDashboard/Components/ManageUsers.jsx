@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { FaEdit, FaTrash } from "react-icons/fa";
+import { Link } from "react-router-dom";
+
 
 // Custom toast
 const Toast = ({ message, type }) => (
@@ -25,7 +27,7 @@ const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const usersPerPage = 10;
+  const usersPerPage = 8;
 
   useEffect(() => {
     fetchUsers();
@@ -163,7 +165,20 @@ const ManageUsers = () => {
                       <td className="px-6 py-2 font-medium">{user.name}</td>
                       <td className="px-6 py-2">{user.email}</td>
                       <td className="px-6 py-2">{user.registeredIp}</td>
-                      <td className="px-6 py-2">{user.complianceScore}</td>
+                      <td className="px-6 py-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium
+      ${user.complianceScore < 60
+                              ? 'bg-red-100 text-red-700'
+                              : user.complianceScore < 80
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                        >
+                          {user.complianceScore}
+                        </span>
+                      </td>
+
                       <td className="px-6 py-2">{user.riskScore}</td>
                       <td className="px-6 py-2">
                         <select
@@ -193,18 +208,39 @@ const ManageUsers = () => {
                     </>
                   ) : (
                     <>
-                      <td className="px-6 py-2 font-medium">{user.name}</td>
+                      <td className="px-6 py-2 font-medium flex flex-col">
+                        <span>{user.name}</span>
+                        <Link
+                          to={`/employee-dashboard/${user._id}`}
+                          className="text-blue-500 text-xs hover:underline mt-1"
+                        >
+                          View Dashboard
+                        </Link>
+                      </td>
+
                       <td className="px-6 py-2">{user.email}</td>
                       <td className="px-6 py-2">{user.registeredIp}</td>
-                      <td className="px-6 py-2">{user.complianceScore}</td>
-                       <td className="px-6 py-2">{user.riskScore}</td>
+                      <td className="px-6 py-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium
+      ${user.complianceScore < 60
+                              ? 'bg-red-100 text-red-700'
+                              : user.complianceScore < 80
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                        >
+                          {user.complianceScore}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-2">{user.riskScore}</td>
                       <td className="px-6 py-2 capitalize font-semibold">
                         <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            user.role === "admin"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-green-100 text-green-700"
-                          }`}
+                          className={`px-2 py-1 rounded text-xs ${user.role === "admin"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-green-100 text-green-700"
+                            }`}
                         >
                           {user.role}
                         </span>
@@ -233,11 +269,10 @@ const ManageUsers = () => {
         <button
           onClick={goToPrevPage}
           disabled={currentPage === 1}
-          className={`px-4 py-2 rounded ${
-            currentPage === 1
-              ? "bg-gray-300 cursor-not-allowed"
-              : "bg-gray-200 hover:bg-gray-300"
-          }`}
+          className={`px-4 py-2 rounded ${currentPage === 1
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-gray-200 hover:bg-gray-300"
+            }`}
         >
           ⬅ Prev
         </button>
@@ -247,11 +282,10 @@ const ManageUsers = () => {
         <button
           onClick={goToNextPage}
           disabled={currentPage === totalPages}
-          className={`px-4 py-2 rounded ${
-            currentPage === totalPages
-              ? "bg-gray-300 cursor-not-allowed"
-              : "bg-gray-200 hover:bg-gray-300"
-          }`}
+          className={`px-4 py-2 rounded ${currentPage === totalPages
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-gray-200 hover:bg-gray-300"
+            }`}
         >
           Next ➡
         </button>

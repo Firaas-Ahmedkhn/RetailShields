@@ -20,6 +20,7 @@ const Register = () => {
   const [confirm, setConfirm] = useState('');
   const [registeredIp, setregisteredIp] = useState('');
   const [otpTransformation, setOtpTransformation] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
   const passwordRef = useRef();
 
   useEffect(() => {
@@ -50,6 +51,7 @@ const Register = () => {
         role: 'employee',
         biometricProfile,
         otpTransformation,
+        securityAnswer,
         registeredIp,
       });
 
@@ -80,7 +82,7 @@ const Register = () => {
 
           <form className="space-y-4" onSubmit={handleRegister}>
             {/* Name + Email */}
-            <div className="flex flex-col lg:flex-row md:gap-4 ">
+            <div className="flex flex-col lg:flex-row md:gap-4">
               <div className="flex-1 mb-4">
                 <label className="block text-sm mb-1">Full Name</label>
                 <input
@@ -89,7 +91,7 @@ const Register = () => {
                   onChange={(e) => setName(e.target.value)}
                   required
                   className="w-full px-4 py-2 text-sm lg:text-base rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="John Doe"
+                  placeholder="Enter name"
                 />
               </div>
 
@@ -134,32 +136,43 @@ const Register = () => {
               </div>
             </div>
 
-            {/* OTP Transformation */}
-            <div className="mb-4">
-              <label className="block text-sm mb-1">Select OTP Transformation Strategy</label>
-              <select
-                value={otpTransformation}
-                onChange={(e) => setOtpTransformation(e.target.value)}
-                required
-                className="w-full px-4 py-2 text-xs lg:text-base rounded-lg bg-gray-100 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="">-- Select a strategy --</option>
-                <option value="reverse">Reverse OTP</option>
-                <option value="prefix_42 text-base">Prefix 42</option>
-                <option value="shift_+1 text-base">Shift digits +1</option>
-                <option value="shift_-1 text-base">Shift digits -1</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                You'll have to apply this transformation to your OTP during password reset.
-              </p>
+            {/* OTP + Security Answer in Same Row */}
+            <div className="flex flex-col lg:flex-row md:gap-4">
+              <div className="flex-1 mb-4">
+                <label className="block text-sm mb-1">OTP Transformation</label>
+                <select
+                  value={otpTransformation}
+                  onChange={(e) => setOtpTransformation(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 text-xs lg:text-base rounded-lg bg-gray-100 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="">-- Select a strategy --</option>
+                  <option value="reverse">Reverse OTP</option>
+                  <option value="prefix_42">Prefix 42</option>
+                  <option value="shift_+1">Shift digits +1</option>
+                  <option value="shift_-1">Shift digits -1</option>
+                </select>
+              </div>
+
+              <div className="flex-1 mb-4">
+                <label className="block text-sm mb-1">Answer Security Question</label>
+                <input
+                  type="text"
+                  value={securityAnswer}
+                  onChange={(e) => setSecurityAnswer(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 text-sm lg:text-base rounded-lg bg-gray-100 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="What is your favourite color?"
+                />
+              </div>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={!registeredIp || !name || !email || !password || !confirm || !otpTransformation}
+              disabled={!registeredIp || !name || !email || !password || !confirm || !otpTransformation || !securityAnswer}
               className={`w-full py-2 rounded-lg font-semibold text-white transition
-                ${(!registeredIp || !name || !email || !password || !confirm || !otpTransformation)
+                ${(!registeredIp || !name || !email || !password || !confirm || !otpTransformation || !securityAnswer)
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90'}`}
             >
