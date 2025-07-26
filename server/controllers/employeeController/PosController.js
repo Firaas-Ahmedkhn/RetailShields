@@ -3,7 +3,7 @@ import AdminNotification from "../../models/AdminDashboard/NotificationSchema.js
 import mongoose, { Types } from "mongoose";
 
 
-// Create a new POS event
+
 
 
 export const createPOSEvent = async (req, res) => {

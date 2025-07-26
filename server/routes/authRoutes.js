@@ -1,6 +1,6 @@
 import express from "express";
 import verifyToken from "../middleware/middleware.js"
-import { register, login, requestOtp, resetPassword, verifySecurityQuestion, getUserById, verifyOtp, getAllUsers, updateUser, deleteUser, getSuspiciousLogins, getSuspiciousUsers } from "../controllers/authControllers.js"; // fix typo too
+import { register, login, requestOtp, resetPassword, verifySecurityQuestion, getUserById, verifyOtp, getAllUsers, updateUser, deleteUser, getSuspiciousLogins, getSuspiciousUsers ,updateEmbeddingVector } from "../controllers/authControllers.js"; // fix typo too
 console.log("🚀 authRoute.js loaded");
 
 
@@ -18,6 +18,7 @@ router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
 router.get("/suslogin", getSuspiciousLogins)
 router.get("/sususers",getSuspiciousUsers)
+router.post("/embedding", updateEmbeddingVector);
 
 
 export default router;

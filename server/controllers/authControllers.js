@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallbacksecret";
 const BIOMETRIC_API_URL = process.env.BIOMETRIC_API_URL
 
 
-// ✅ REGISTER
+
 export const register = async (req, res) => {
   try {
     const {
@@ -90,7 +90,7 @@ export const register = async (req, res) => {
 };
 
 
-// ✅ LOGIN
+
 export const login = async (req, res) => {
   try {
     const { email, password, typingPattern, agreementChecked } = req.body;
@@ -637,5 +637,30 @@ export const verifySecurityQuestion = async (req, res) =>{
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const updateEmbeddingVector = async (req, res) => {
+  const { userId, embeddingVector } = req.body;
+
+  if (!userId || !Array.isArray(embeddingVector)) {
+    return res.status(400).json({ message: "userId and valid embeddingVector are required" });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { EmbeddingVector: embeddingVector },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ message: "Embedding vector updated", user });
+  } catch (err) {
+    console.error("Error updating embedding vector:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
