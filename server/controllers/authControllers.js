@@ -12,6 +12,16 @@ const BIOMETRIC_API_URL = process.env.BIOMETRIC_API_URL
 
 
 
+import axios from "axios";
+import FormData from "form-data";
+import fs from "fs";
+import path from "path";
+
+// ⏬ ADD this at the top if not already
+import User from "../models/User.js"; // your Mongoose model
+import bcrypt from "bcryptjs";
+import zxcvbn from "zxcvbn";
+
 export const register = async (req, res) => {
   try {
     const {
@@ -22,8 +32,7 @@ export const register = async (req, res) => {
       biometricProfile,
       otpTransformation,
       agreementChecked,
-      // ✅ New field
-      securityAnswer,   // ✅ New field
+      securityAnswer,
     } = req.body;
 
     if (
@@ -33,8 +42,7 @@ export const register = async (req, res) => {
       !role ||
       !biometricProfile ||
       !otpTransformation ||
-
-      !securityAnswer // ✅ Ensure these are required
+      !securityAnswer
     ) {
       return res.status(400).json({ message: "Missing or invalid input" });
     }
@@ -44,25 +52,20 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // ✅ Hash the security answer (optional but recommended)
     const hashedSecurityAnswer = await bcrypt.hash(securityAnswer, 10);
 
-    // Check password strength using zxcvbn
     const strengthScore = zxcvbn(password).score;
     let passwordStrength = "weak";
     if (strengthScore >= 4) passwordStrength = "strong";
     else if (strengthScore >= 2) passwordStrength = "medium";
 
-    // Initial compliance score based on password strength
     let complianceScore = 0;
     if (passwordStrength === "strong") complianceScore += 30;
     else if (passwordStrength === "medium") complianceScore += 15;
 
-    // 🔍 Capture IP address from headers (or fallback)
     let ip = req.body.registeredIp;
-    if (!ip || ip.trim() === '') {
-      ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    if (!ip || ip.trim() === "") {
+      ip = req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
     }
 
     const newUser = await User.create({
@@ -76,13 +79,31 @@ export const register = async (req, res) => {
       passwordStrength,
       complianceScore,
       agreementChecked: agreementChecked === true,
-      // ✅ Store question as-is
-      securityAnswer: hashedSecurityAnswer,  // ✅ Store hashed answer
+      securityAnswer: hashedSecurityAnswer,
     });
 
-    console.log(ip);
+    // 🔁 REGISTER FACE with FastAPI
+    const form = new FormData();
+    form.append("image", fs.createReadStream(req.file.path));
+
+    const response = await axios.post(
+      `http://localhost:8000/register-face?user_id=${newUser._id}`,
+      form,
+      { headers: form.getHeaders() }
+    );
+
+    if (response?.data?.message && response.data._id) {
+     
+      const fastapiUser = await axios.get(`http://localhost:8000/get-user-embedding/${newUser._id}`);
+      const embedding = fastapiUser?.data?.embedding;
+
+      if (embedding) {
+        await User.findByIdAndUpdate(newUser._id, { EmbeddingVector: embedding });
+      }
+    }
 
     res.status(201).json({ message: "User registered successfully" });
+
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ message: "Server error" });
@@ -91,208 +112,46 @@ export const register = async (req, res) => {
 
 
 
+
 export const login = async (req, res) => {
   try {
-    const { email, password, typingPattern, agreementChecked } = req.body;
+    const { email, password } = req.body;
 
-    if (!email || !password || !typingPattern || typingPattern.length < 10) {
-      return res.status(400).json({ message: "Missing or invalid input" });
+    if (!email || !password || !req.file) {
+      return res.status(400).json({ message: "Missing credentials or face image" });
     }
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Check if account is locked
-    if (user.lockUntil && user.lockUntil > new Date()) {
-      return res.status(403).json({
-        message: `Account locked due to multiple failed attempts. Try again after ${user.lockUntil.toLocaleString()}`,
-      });
-    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid password" });
 
-    const match = await bcrypt.compare(password, user.password);
+    
+    const form = new FormData();
+    form.append("image", fs.createReadStream(req.file.path));
 
-    if (!match) {
-      user.loginAttempts += 1;
-
-      if (user.loginAttempts >= 3) {
-        user.failedLoginAttempts += 1; // ✅ increment failed logins
-        user.lockUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hrs
-        user.loginAttempts = 0; // reset loginAttempts
-
-        // Send email notification
-        try {
-          const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-              user: "retailshield864@gmail.com",
-              pass: process.env.APP_PASSWORD,
-            },
-          });
-
-          await transporter.sendMail({
-            from: "Retail Shield <retailshield864@gmail.com>",
-            to: email,
-            subject: "🚨 Account Locked After Multiple Failed Attempts",
-            text: `Hi ${user.name},\n\nYour account has been locked due to multiple incorrect password attempts.\n\n⏳ You can try again after: ${user.lockUntil.toLocaleString()}\n\nIf this wasn’t you, please contact support immediately.\n\n– Retail Shield Security`,
-          });
-        } catch (emailErr) {
-          console.error("❌ Failed to send lock alert email:", emailErr.message);
-        }
-
-        await user.save();
-        return res.status(403).json({ message: "Account locked for 24 hours due to multiple failed attempts" });
-      }
-
-      await user.save();
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // ✅ Password matched, reset attempts if needed
-    if (user.loginAttempts > 0 || user.lockUntil) {
-      user.loginAttempts = 0;
-      user.lockUntil = null;
-      await user.save();
-    }
-
-    // 🔐 Password strength check
-    const strengthScore = zxcvbn(password).score;
-    let passwordStrength = "weak";
-    if (strengthScore >= 4) passwordStrength = "strong";
-    else if (strengthScore >= 2) passwordStrength = "medium";
-
-    // 🧠 Biometric
-    let score = -1;
-    let prediction = "unknown";
-
-    try {
-      const response = await axios.post("http://localhost:8000/predict/biometric", {
-        originalProfile: user.biometricProfile,
-        attemptProfile: typingPattern,
-      });
-
-      score = response?.data?.score ?? -1;
-      prediction = response?.data?.prediction ?? "rejected";
-
-      console.log(`🧠 Biometric score for ${user.email}:`, score, '| Prediction:', prediction);
-    } catch (err) {
-      return res.status(500).json({ message: "Biometric comparison failed. Try again." });
-    }
-
-    if (prediction === "rejected") {
-      console.log("Rejected:", score)
-      return res.status(403).json({ message: "❌ Biometric rejected. Access denied.", score });
-
-    }
-    if (prediction === "suspicious" || prediction === "threat") {
-      // Increment user's threat count
-      user.threats = (user.threats || 0) + 1;
-      user.threatLogs = user.threatLogs || [];
-      user.threatLogs.push({
-        timestamp: new Date(),
-        type: prediction,
-        biometricScore: score,
-        ip: req.ip, // optional: log IP if behind a proxy use req.headers['x-forwarded-for']
-      });
-      await user.save();
-
-      // Send email to alert the user
-      try {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: "retailshield864@gmail.com",
-            pass: process.env.APP_PASSWORD,
-          },
-        });
-
-        await transporter.sendMail({
-          from: "Retail Shield <retailshield864@gmail.com>",
-          to: user.email,
-          subject: "⚠️ Suspicious Login Behavior Detected",
-          text: `Hi ${user.name},
-
-We've detected suspicious biometric behavior during your recent login attempt.
-
-🕵️‍♀️ It may indicate someone else trying to access your account.
-
-You’ve been redirected to answer a security question to confirm it’s really you.
-
-If this wasn’t you, please change your password immediately and contact support.
-
-– Retail Shield Security Team`,
-        });
-
-      } catch (emailErr) {
-        console.error("❌ Failed to send suspicious login alert:", emailErr.message);
-      }
-
-      // Return redirect flag and security question
-      return res.status(403).json({
-        message: "Suspicious biometric behavior. Please answer your security question.",
-        redirectToSecurityQuestion: true,
-        email: user.email,
-        question: user.securityQuestion
-      });
-
-    }
-
-    let complianceScore = 0;
-
-    if (passwordStrength === "strong") complianceScore += 30;
-    else if (passwordStrength === "medium") complianceScore += 15;
-
-    if (prediction === "valid") complianceScore += 50;
-
-    if (agreementChecked === true && user.agreementChecked !== true) {
-      complianceScore += 10;
-      user.agreementChecked = true;
-    }
-
-
-    complianceScore += 10;
-
-    if (complianceScore > 100) complianceScore = 100;
-
-    // ✅ All good, update pattern and flags
-    if (prediction === "valid") {
-      await User.findByIdAndUpdate(user._id, {
-        biometricProfile: typingPattern,
-        isLastBiometricValid: true,
-        agreementChecked: user.agreementChecked,
-        complianceScore,
-      });
-    } else {
-      // Just update agreementChecked if applicable
-      if (agreementChecked === true && user.agreementChecked !== true) {
-        user.complianceScore = complianceScore;
-        await user.save();
-      }
-    }
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    return res.status(200).json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        riskScore: score,
-        // passwordStrength,
-
-        complianceScore
-      },
+    const response = await axios.post("http://localhost:8000/verify-face", form, {
+      headers: form.getHeaders(),
     });
+
+    const { _id: matchedId, score, prediction } = response.data;
+
+    if (matchedId !== user._id.toString()) {
+      return res.status(401).json({ message: "Face does not match with user." });
+    }
+
+    if (prediction !== "valid") {
+      return res.status(403).json({ message: `Access denied: ${prediction}` });
+    }
+
+    res.status(200).json({ message: "Login successful", score, prediction });
   } catch (err) {
-    console.error("🔥 Login error:", err.message);
-    res.status(500).json({ message: "Server error during login" });
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Login failed" });
   }
 };
+
 
 
 
