@@ -97,6 +97,11 @@ Retail Shield stops attackers, even if they have the correct password.
 - 📱 Mobile biometric input  
 - 🛡️ Multi-factor authentication with WebAuthn
 
+## Production Guide
+ - Client -> npm install | npm run dev
+ - Server -> npm install | npm run dev
+ - Backend ->  pip install -r requirements.txt | uvicorn main:app --reload --port 8000
+
 ## 🤝 Let’s Collaborate
 
 Got feedback? Want to use this in your company?  
