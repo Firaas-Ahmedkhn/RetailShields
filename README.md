@@ -51,8 +51,6 @@ In the past few years, cybersecurity has shifted focus — from purely technical
 
 These weren’t software bugs — they were employee-side vulnerabilities.
 
-## This is where Retail Shield comes in: a behavioral security platform that uses keystroke biometrics, multi-layered authentication, and real-time risk monitoring to protect your employees from becoming your weakest link.
-
 ## 💡 Why This Matters for Retail
 
 Big-box retailers like Walmart or Costco have:
